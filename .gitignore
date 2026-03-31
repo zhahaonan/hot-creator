@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.log
+node_modules/
+.DS_Store
+Thumbs.db
+
+# 运行时输出（不跟踪）
+output/
+HotCreator/
+
+# 含密钥的配置（只跟踪 example）
+config.yaml
+
+# 编辑器
+.vscode/
+.idea/
+*.swp

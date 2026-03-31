@@ -1,0 +1,48 @@
+# hot-creator 配置文件
+# 复制为 config.yaml 并按需修改
+
+# Obsidian 笔记库路径（相对于项目根目录或绝对路径）
+vault_path: "./HotCreator"
+
+# 内容领域配置 — 定义你关注的领域和关键词
+# 用于知识库的智能关联和图谱聚类
+content_domains:
+  科技数码:
+    keywords: ["AI", "手机", "芯片", "大模型", "开源", "编程"]
+    platforms: ["知乎", "B站"]
+  财经理财:
+    keywords: ["基金", "利率", "PMI", "股市", "贷款", "监管"]
+    platforms: ["抖音", "公众号"]
+  娱乐八卦:
+    keywords: ["明星", "综艺", "剧集", "举报", "塌房"]
+    platforms: ["微博", "小红书"]
+  教育职场:
+    keywords: ["考研", "就业", "考公", "内卷", "工资"]
+    platforms: ["知乎", "抖音"]
+
+# 采集配置
+collect:
+  hotlist_platforms: ["weibo", "douyin", "zhihu", "baidu"]
+  rss_enabled: true
+  social_enabled: false   # 需要 CDP 环境，默认关闭
+
+# 分析配置
+analyze:
+  top_n: 8                # content_brief 处理的话题数上限
+  batch_size: 2           # content_brief 每批处理数
+
+# 知识图谱配置
+graph:
+  rolling_days: 7         # 滚动窗口天数
+  cumulative: true        # 是否启用全量累积
+
+# 产品配置（可选 — 启用后 start_my_day 自动进入产品×热点模式）
+# product:
+#   default_profile: "output/my-product-profile.json"  # 预生成的画像文件路径
+#   auto_insight: true                                   # 是否自动跑 industry_insight
+
+# AI 配置（仅 CLI 模式需要，Agent 模式忽略）
+# ai:
+#   api_key: "sk-your-key"
+#   model: "deepseek/deepseek-chat"
+#   api_base: "https://api.deepseek.com/v1"
