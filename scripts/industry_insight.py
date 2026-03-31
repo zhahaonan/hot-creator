@@ -17,7 +17,7 @@ from _common import (
 try:
     import litellm
 except ImportError:
-    fail("litellm not installed. Run: pip install litellm")
+    fail("litellm not installed (CLI mode only). Run: pip install -r requirements-cli.txt")
 
 SCHEMA = {
     "name": "industry_insight",

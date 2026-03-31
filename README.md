@@ -16,7 +16,7 @@
 │  ├─ 上下文预算 → reference/context-budget.md                     │
 │  └─ 知识按需加载表 → reference/*.md + site-patterns/*.md         │
 ├─────────────────────────────────────────────────────────────────┤
-│  11 原子工具 (scripts/)                                          │
+│  13 原子工具 (scripts/)                                          │
 │  ├─ 采集层: collect_hotlist / collect_rss / collect_social       │
 │  ├─ 分析层: trend_analyze / content_brief / industry_insight     │
 │  ├─ 画像层: product_profile / monitor_competitor                 │
@@ -37,61 +37,85 @@
 
 ## Features / 特性
 
-- **Atomic & Composable** — 11 独立工具，JSON stdin/stdout，自由组合
+- **Atomic & Composable** — 13 独立工具，JSON stdin/stdout，自由组合
 - **Self-Describing** — 每个工具支持 `--help` / `--schema` / `--version`
 - **Progressive Disclosure** — SKILL.md 只有 ~80 行，reference 按需加载
 - **Multi-Agent Ready** — 内置 Fan-out/Fan-in、Pipeline、Expert Pool 编排策略
 - **Context-Aware** — 三层压缩策略（子智能体隔离 + 数据压缩 + 知识延迟加载）
 - **Dual Mode** — Agent 原生模式（无需 AI API）+ 独立 CLI 模式
 - **Full Creative Briefs** — 创作角度、大纲（视频/图文/长文）、标题矩阵、对标案例、发布策略
-- **Triple Output** — Excel (.xlsx) + Obsidian Markdown + Markmap 思维导图
+- **Structured Output** — Excel (4 Sheet) + Obsidian (Topics 按类别 + Copywriting 按平台) + 力导向图谱
 - **Product Integration** — 产品画像 x 热点结合，竞品监控，行业洞察
 - **Built-in CDP** — 内置浏览器引擎，抓取小红书/抖音/微博动态页面
 
 ## Quick Start / 快速开始
 
-### As Cursor/Claude Code Skill
+### As AI Agent Skill（推荐，3 秒安装）
+
+适用于 Cursor / Claude Code / Cline / Windsurf 等 AI 编码工具：
 
 ```bash
-# Copy to skills directory
-cp -r hot-creator ~/.cursor/skills/hot-creator
-
-# Then ask Agent:
-# "帮我看看现在什么热点最火，生成一份内容创作简报"
+git clone https://github.com/zhahaonan/hot-creator.git
+cd hot-creator
+pip install -r requirements.txt   # 仅 5 个轻量包，~5 MB
 ```
 
-Agent 自动读取 `SKILL.md`，按编排策略执行采集、分析、输出。**不需要 AI API 配置**。
+> 有 `uv` 的话更快：`uv pip install -r requirements.txt`（秒装）
 
-### Standalone CLI
+然后直接对 Agent 说：
+
+```
+"帮我看看现在什么热点最火，生成一份内容创作简报"
+```
+
+Agent 自动读取 `SKILL.md`，按编排策略执行采集→分析→输出。**不需要 AI API Key**。
+
+### Standalone CLI（完整独立模式）
+
+需要额外安装 `litellm`（~200 MB），用于脱离 Agent 独立运行 AI 分析：
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-cli.txt  # 包含 litellm + 全部依赖
 
-# Set API key (CLI mode only)
-cp .env.example .env  # Edit with your API key
+cp .env.example .env                 # 填入你的 AI API Key
 
-# Full pipeline
+# 一键全流程
+python scripts/start_my_day.py
+
+# 或逐步执行
 python scripts/collect_hotlist.py --platforms weibo,douyin,zhihu -o output/hotlist.json
 python scripts/trend_analyze.py -i output/hotlist.json -o output/trends.json
 python scripts/content_brief.py -i output/trends.json --top 10 -o output/briefs.json
 python scripts/export_excel.py -i output/briefs.json --xlsx output/report.xlsx
 ```
 
+### 安装对比
+
+| 模式 | 命令 | 大小 | 耗时 | 需要 API Key |
+|------|------|------|------|-------------|
+| **Skill 模式** | `pip install -r requirements.txt` | ~5 MB | ~3s | 不需要 |
+| CLI 模式 | `pip install -r requirements-cli.txt` | ~200 MB | ~60s | 需要 |
+
 ## Tools / 工具
 
-| Tool | Script | Description | Dependencies |
-|------|--------|-------------|-------------|
-| collect_hotlist | `scripts/collect_hotlist.py` | Public API hotlist | requests |
-| collect_rss | `scripts/collect_rss.py` | RSS feeds | feedparser |
-| collect_social | `scripts/collect_social.py` | Social media (CDP) | requests + CDP |
-| monitor_competitor | `scripts/monitor_competitor.py` | Competitor tracking (CDP) | requests + CDP |
-| product_profile | `scripts/product_profile.py` | Product profile extraction | litellm |
-| trend_analyze | `scripts/trend_analyze.py` | AI trend scoring | litellm |
-| industry_insight | `scripts/industry_insight.py` | Industry analysis | litellm |
-| content_brief | `scripts/content_brief.py` | Creative brief generation | litellm |
-| export_excel | `scripts/export_excel.py` | Excel report | openpyxl |
-| export_obsidian | `scripts/export_obsidian.py` | Obsidian notes | — |
-| export_mindmap | `scripts/export_mindmap.py` | Markmap mind map | — |
+| Tool | Description | Deps | Mode |
+|------|-------------|------|------|
+| **collect_hotlist** | 全网热榜采集（公共 API） | requests | Core |
+| **collect_rss** | RSS 订阅采集 | feedparser | Core |
+| **collect_social** | 社媒实时数据（小红书/抖音/微博） | CDP | Core |
+| **monitor_competitor** | 竞品内容监控 | CDP | Core |
+| **trend_analyze** | AI 趋势评分与分类 | litellm | CLI |
+| **content_brief** | AI 内容创作简报（支持产品模式） | litellm | CLI |
+| **product_profile** | 产品资料 → 结构化画像 | litellm | CLI |
+| **industry_insight** | 行业趋势洞察 | litellm | CLI |
+| **knowledge_base** | 累积知识库（追加/搜索/图谱） | — | Core |
+| **export_excel** | Excel 报表（4 Sheet） | openpyxl | Core |
+| **export_obsidian** | Obsidian（Topics 按类别 + Copywriting 按平台） | — | Core |
+| **export_mindmap** | 力导向关系图谱 | — | Core |
+| **start_my_day** | 一键编排器 | — | Core |
+
+> **Core** = `requirements.txt` 即可 · **CLI** = 额外需要 `requirements-cli.txt`（litellm）
+> 作为 Skill 时，CLI 模式的工具由 Agent 自身完成 AI 分析，不需要 litellm
 
 ```bash
 # Tool self-description
