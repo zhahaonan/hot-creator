@@ -102,9 +102,13 @@ python scripts/collect_hotlist.py --version # Version
 
 ## Supported Platforms / 支持平台
 
-**热榜 (API):** 微博, 抖音, 知乎, 百度, 头条, B站, 36氪, IT之家, 澎湃新闻, 财联社
+**热门榜单 (40+ 源):** 微博, 抖音, 知乎, 百度热搜, 今日头条, B站, 澎湃新闻, 虎扑, 百度贴吧, 酷安, 豆瓣, 凤凰网, 牛客, 腾讯新闻, 腾讯视频, 爱奇艺, 虫部落, 36氪人气榜, 华尔街见闻, 财联社热门, 雪球, Hacker News, Product Hunt, GitHub Trending, 少数派, 稀土掘金, Freebuf, Steam
+
+**实时新闻流:** 联合早报, 华尔街见闻快讯, 36氪快讯, 财联社电报, IT之家, 格隆汇, 金十数据, 法布财经
 
 **RSS:** 36氪, Hacker News, 少数派（可配置自定义 feed）
+
+> 数据源来自 [NewsNow](https://newsnow.busiyi.world/)，采集结果除标题外还会尽量保留：**`snippet`**（如知乎 `hover` 长摘要）、**`published_at`**（如联合早报 `pubDate`、快讯里的毫秒时间）、**`url` / `mobile_url`**、**`heat`**。若某平台 API 只给标题，则 `snippet` 为空——需正文时请用 `url` 打开或配合 `enrich_topics` / Web 抓取。
 
 ## Version / 版本
 

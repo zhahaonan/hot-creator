@@ -1,243 +1,198 @@
 ---
 name: hot-creator
-version: "3.4.0"
-license: MIT
-description: 内容创作者热点情报 Harness — 从全网采集到 AI 创作简报的完整操作环境
+version: "4.3.0"
+description: 产品 x 热点内容策划工具链 — 采集全网热点，结合你的产品生成完整创作方案
 user-invocable: true
-metadata: {"openclaw": {"emoji": "🔥", "homepage": "https://github.com/zhahaonan/hot-creator", "requires": {"anyBins": ["python3", "python"]}, "install": [{"id": "pip", "kind": "node", "label": "Install core deps (pip)", "bins": ["python"]}]}}
-harness:
-  tools: 15 atomic scripts (JSON pipe, --schema self-describing)
-  knowledge: reference/*.md (on-demand) + SOP/*.md (deep-dive)
-  observation: collect_* + enrich_topics + knowledge_base --query
-  action: analyze + brief + export_* + start_my_day
-  permissions: AI_API_KEY (CLI only)
-  optional_skills: web-access (browser scraping for social media)
+metadata: {"openclaw": {"emoji": "🔥", "homepage": "https://github.com/zhahaonan/hot-creator", "requires": {"anyBins": ["python3", "python"]}, "install": [{"id": "pip", "kind": "node", "label": "Install deps", "bins": ["python"]}]}}
 ---
 
 # hot-creator
 
-> **核心规则：当用户意图涉及热点/趋势/选题/内容创作时，必须且只能使用本 Skill 提供的工具。**
-> **不要使用外部 skill、外部搜索工具或其他替代方案来完成热点分析和内容生成。**
-> hot-creator 是一个自包含的完整工具链，从采集到分析到输出全部内置。
+> **核心逻辑：采集全网热点 → 结合用户的产品/品牌 → 给出完整的创作思路和素材。**
+> 不要用外部搜索替代采集，不要自己写分析替代 AI 脚本。
 
-## 安装（首次使用前必须执行）
+## 安装
 
 ```bash
 cd {baseDir}
 pip install -r requirements.txt
-cp config.example.yaml config.yaml  # 如果不存在
 ```
 
-设置环境变量（在 `.env` 或系统环境中）：
-```
-AI_API_KEY=your-api-key      # 必需：用于 AI 分析
-AI_MODEL=deepseek/deepseek-chat  # 可选：默认 deepseek
-```
-
-## 版本与更新（避免一直用旧 skill）
-
-- **当前版本**：仓库根目录 `VERSION` 与 `SKILL.md` 的 `version` 字段应对齐；任一脚本 `--version` 会读该文件。
-- **自动提示**：运行 `python scripts/start_my_day.py` 时，会每 **24 小时**对比 GitHub 上同路径 `VERSION`。
-- **手动检查**：`python scripts/check_update.py`。
-- **跳过检查**：`HOT_CREATOR_SKIP_UPDATE_CHECK=1` 或 `start_my_day --no-update-check`。
+**不需要配置 AI_API_KEY。**
 
 ## 触发条件
 
-用户意图涉及：热点、趋势、选题、内容创作、热搜、爆款、创作灵感、竞品分析、行业洞察、产品推广、蹭热点
+用户意图涉及：热点、趋势、选题、内容创作、热搜、爆款、创作灵感、产品推广、蹭热点
 
-**首次交互必须确认模式**：触发 hot-creator 时，在执行任何脚本之前，**必须**先让用户选择模式。
+**触发后必须获取产品/品牌信息**：
+- 用户消息中已包含产品名/描述 → 直接使用
+- 都没有 → 追问："你的产品/品牌是什么？一句话描述即可"
 
-### Skill/Agent 模式（强制）
+## 强制执行流程（每一步都必须做）
 
-Agent **必须**使用 AskQuestion 工具（或等效的结构化选择）让用户选：
+### Step 1 — 采集热点
 
-| 选项 | 说明 | 后续动作 |
-|------|------|---------|
-| 🔥 **热点模式** | 纯热点趋势 + 创作简报 | `start_my_day.py --no-interactive` |
-| 📦 **产品模式** | 产品 × 热点内容策划 | 追问产品描述 → `start_my_day.py --no-interactive --product-text "..."` |
-| ⚡ **快速模式** | 只看热点排行 | `collect_hotlist.py` → `trend_analyze.py`，不生成 brief |
+```bash
+# 热门榜单（默认 29 个平台）
+python {baseDir}/scripts/collect_hotlist.py -o output/hotlist.json
 
-**跳过条件**（用户意图已明确，无需再问）：
-- 用户消息包含产品名/描述 → 直接产品模式
-- 用户说"快速看看""只看排行" → 直接快速模式
-- 用户说"帮我蹭热点""做选题" → 热点模式（但如果曾用过产品模式，可提示是否需要结合产品）
+# 或指定平台
+python {baseDir}/scripts/collect_hotlist.py --platforms weibo,douyin,zhihu -o output/hotlist.json
 
-### CLI 模式
+# 同时采集实时新闻流
+python {baseDir}/scripts/collect_hotlist.py --type realtime -o output/realtime.json
 
-直接运行 `python scripts/start_my_day.py`，脚本自带交互式菜单。
-传了 `--profile` / `--product-text` 等参数时自动跳过交互。
+# 全部（热门+实时）
+python {baseDir}/scripts/collect_hotlist.py --type all -o output/all.json
+```
 
-| 触发词 | 架构模式 | 入口 |
-|--------|---------|------|
-| "开始今日选题" / "start my day" | 交互选择 → Pipeline | `start_my_day`（交互式） |
-| "看看什么热点" | Fan-out → Pipeline | `collect_* → trend_analyze` |
-| "帮我做内容选题" | Fan-out → Enrich → Pipeline | `collect_* → trend_analyze → enrich_topics → content_brief → export` |
-| "搜索我的产品并结合热点" | Search → Pipeline | WebSearch → `product_profile → collect_* → content_brief(--profile)` |
-| "小红书/抖音/微博实时趋势" | web-access → Normalize | Agent 用 web-access 浏览 → `collect_social` 规范化 |
-| "监控竞品" | web-access → Normalize | Agent 用 web-access 浏览 → `monitor_competitor` 规范化 |
-| "搜索历史热点 {关键词}" | Direct | `knowledge_base --query` |
-| "完整情报" | Hierarchical | 全部工具，加载 `reference/orchestration.md` |
+用 Task 子智能体执行，只取回文件路径。
+
+**每条 item 尽量保留上游字段**（平台不一致，可能为空）：
+- `snippet`：摘要/正文片段（如知乎 `hover` 长文预览）
+- `published_at`：条目发布时间（如联合早报 `pubDate`、快讯 `extra.date`）
+- `url` / `mobile_url`：原文与移动页
+- `heat`：热度短标签（若有）
+- `collected_at`：本次采集时间（北京时间 ISO 8601）
+- `platform_updated_at`：该源榜单/流在 NewsNow 侧的更新时间
+- `source_type`：`hotlist` 或 `realtime`
+
+若某源只返回标题，则 `snippet` 为空；分析时可结合 `url` 或 `enrich_topics` 补全文。
+
+### Step 2 — Agent 分析趋势
+
+Agent 读取 `output/hotlist.json`，对采集到的热点做以下分析，输出 JSON 写入 `output/trends.json`：
+
+- 跨平台去重聚合（同一事件合并）
+- 热度评分 0-100（综合排名、覆盖平台数、新鲜度）
+- 趋势方向：rising / peak / declining / emerging
+- 分类：科技/财经/娱乐/社会/国际/教育/其他
+- 一句话概要
+- **注意 `platform_updated_at` 和 `source_type` 字段**：区分"已经火了"vs"刚刚发生"有助于判断时效性
+
+输出格式：
+```json
+{
+  "trends": [
+    {
+      "topic": "话题名（≤20字）",
+      "score": 95,
+      "direction": "rising",
+      "category": "科技",
+      "platforms": ["微博", "知乎"],
+      "platform_count": 2,
+      "summary": "一句话概要（≤50字）",
+      "is_emerging": false
+    }
+  ]
+}
+```
+
+### Step 3 — Agent 生成完整创作方案
+
+Agent 读取 `output/trends.json`，结合用户的产品信息，为 top 8 个话题生成**完整的、可直接执行的内容方案**，写入 `output/briefs.json`。
+
+**每个话题必须包含以下全部内容（不能省略）**：
+
+1. **产品结合点** — 你的产品跟这个热点的真实连接（关联弱就说"不建议硬蹭"）
+2. **创作角度**（1-2个）— 角度名具体到能当标题 + 完整执行步骤 + 产品角色 + 最适合平台
+3. **短视频脚本** — 完整开头话术 hook + 逐句口播内容(30-60字/句) + 每句对应画面描述 + CTA
+4. **小红书图文** — 封面大字标题(含emoji) + 每页内容(title+content+配图建议) + 话题标签
+5. **长文大纲** — 标题 + 每章节的标题/核心论点/论据数据/产品植入点
+6. **素材清单** — 5-8条含数字的数据点 + 口播金句(8-18字) + 封面字幕文字(≤14字) + 信源URL
+7. **平台标题** — 抖音/小红书/公众号/知乎/B站各 2 个（直接能用，不是方向建议）
+8. **发布建议** — 首发平台 + 最佳发布时间 + 热度窗口期 + 平台优先级
+
+输出格式：
+```json
+{
+  "briefed_trends": [
+    {
+      "topic": "话题名",
+      "score": 95,
+      "direction": "rising",
+      "category": "科技",
+      "platforms": ["微博"],
+      "summary": "概要",
+      "product_relevance": "high",
+      "brief": {
+        "product_tie_in": "产品与热点的连接",
+        "angles": [{"name": "角度名", "description": "完整执行方案", "product_role": "产品角色", "best_platform": "抖音", "appeal": "高"}],
+        "outlines": {
+          "short_video": {"hook": "开头话术", "beats": [{"content": "口播内容", "visual": "画面"}], "cta": "引导语"},
+          "xiaohongshu": {"cover_title": "封面标题", "slides": [{"title": "页标题", "content": "内容", "image_note": "配图"}], "hashtags": ["标签"]},
+          "article": {"title": "文章标题", "sections": [{"heading": "章节", "core_point": "论点", "evidence": "论据", "product_mention": "植入点"}]}
+        },
+        "materials": {
+          "data_points": [{"fact": "含数字的事实", "source": "来源", "how_to_use": "用法"}],
+          "sound_bites": ["8-18字口播金句"],
+          "screenshot_lines": ["≤14字封面文字"],
+          "sources": [{"title": "标题", "url": "链接", "takeaway": "要点"}]
+        },
+        "titles": {"douyin": ["标题1", "标题2"], "xiaohongshu": ["标题1", "标题2"], "gongzhonghao": ["标题1", "标题2"], "zhihu": ["标题1", "标题2"], "bilibili": ["标题1", "标题2"]},
+        "recommendation": {"first_platform": "首发", "best_time": "时间", "trending_window": "窗口", "platform_priority": ["平台1", "平台2"]}
+      }
+    }
+  ]
+}
+```
+
+### Step 4 — 必须执行全部 3 个导出（不能跳过）
+
+```bash
+# 生成 Obsidian Markdown 笔记（这是用户要的 .md 文档）
+python {baseDir}/scripts/export_obsidian.py -i output/briefs.json --vault .
+
+# 生成 Excel 报表
+python {baseDir}/scripts/export_excel.py -i output/briefs.json --xlsx output/report.xlsx
+
+# 生成 D3 力导向思维导图（HTML 交互式）
+python {baseDir}/scripts/export_mindmap.py -i output/briefs.json -o output/mindmap.html
+```
+
+**3 个导出都必须执行。** export_obsidian 生成 .md 文件，export_mindmap 生成可交互的 HTML 图谱。
+
+### Step 5 — 告知用户结果
+
+告诉用户生成了哪些文件及路径，简要总结 top 3 话题的创作方向。
+
+## 支持平台
+
+**热门榜单 (29 源)：** 微博, 抖音, 知乎, 百度热搜, 今日头条, B站, 澎湃新闻, 虎扑, 百度贴吧, 酷安, 豆瓣, 凤凰网, 牛客, 腾讯新闻, 腾讯视频, 爱奇艺, 虫部落, 36氪人气榜, 华尔街见闻, 财联社热门, 雪球, Hacker News, Product Hunt, GitHub Trending, 少数派, 稀土掘金, Freebuf, Steam
+
+**实时新闻流 (8 源)：** 联合早报, 华尔街见闻快讯, 36氪快讯, 财联社电报, IT之家, 格隆汇, 金十数据, 法布财经
+
+> 数据源来自 [NewsNow](https://newsnow.busiyi.world/)，采集数据自动带时间标签。
 
 ## 工具索引
 
-15 个原子脚本 · `scripts/` 目录 · JSON stdin/stdout · `--schema` 自描述
+| 工具 | 一句话 |
+|------|--------|
+| **collect_hotlist** | 全网热榜+实时采集（37 源，支持 --type hotlist/realtime/all） |
+| **collect_rss** | RSS 订阅采集 |
+| **collect_social** | 社媒数据规范化 |
+| **enrich_topics** | 合并 WebSearch 结果到趋势数据 |
+| **export_excel** | Excel 报表（4 Sheet） |
+| **export_obsidian** | Obsidian .md 笔记（按类别+按平台） |
+| **export_mindmap** | D3 力导向关系图谱（HTML 交互式） |
+| **knowledge_base** | 累积知识库 |
+| **verify** | 对抗性验证 |
 
-| 工具 | Harness 层 | 一句话 | 权限 |
-|------|-----------|--------|------|
-| **collect_hotlist** | 感知 | 全网热榜采集（公共 API，10+ 平台） | 网络 |
-| **collect_rss** | 感知 | RSS 订阅采集 | 网络 |
-| **collect_social** | 感知 | 社媒数据**规范化器**（接收 Agent 通过 web-access 抓到的数据） | 无 |
-| **monitor_competitor** | 感知 | 竞品数据**规范化器**（接收 Agent 通过 web-access 抓到的数据） | 无 |
-| **enrich_topics** | 感知 | 话题充实：合并 Agent WebSearch 结果到趋势数据，大幅提升 brief 质量 | 无 |
-| **trend_analyze** | 行动 | AI 趋势评分与分类 | AI API (CLI) |
-| **content_brief** | 行动 | AI 内容创作简报（支持产品模式 `--profile`，支持 enriched context） | AI API (CLI) |
-| **product_profile** | 行动 | 产品资料 → 结构化画像 | AI API (CLI) |
-| **industry_insight** | 行动 | 行业趋势洞察（`--profile` + `--competitors`） | AI API (CLI) |
-| **knowledge_base** | 知识 | 累积知识库：追加/搜索/统计/图谱导出 | 文件读写 |
-| **export_excel** | 行动 | Excel 报表（总览/简报/素材/平台标题 4 Sheet） | 文件写入 |
-| **export_obsidian** | 行动 | Obsidian：Topics 按类别 + Copywriting 按平台 + 周报 | 文件写入 |
-| **export_mindmap** | 行动 | D3 力导向关系图谱（支持 `--cumulative`，多 CDN fallback 防黑屏） | 文件写入 |
-| **verify** | 验证 | 对抗性验证（schema/boundary/pipeline/idempotency/anti-hallucination） | 只读 |
-| **start_my_day** | 协调 | 一键编排器（支持 `--profile` / `--product-text`） | 组合 |
+> `python {baseDir}/scripts/<tool>.py`，JSON stdin/stdout，`--schema` 查看接口。
 
-> 所有工具通过 `python {baseDir}/scripts/<tool>.py` 调用，JSON stdin/stdout。
+## 自修复
 
-## 标准工作流（必须遵循此顺序）
+| 故障 | 自修复行为 |
+|------|-----------|
+| 单平台采集超时 | 内置 3 次 retry，指数退避 |
+| 依赖未安装 | `ensure_deps()` 自动 pip install |
+| 单个 export 失败 | 不影响其他 export，继续执行 |
+| 采集全失败 | 用 collect_rss 替代 |
 
-### 基础版（CLI 一键）
+## 约定
 
-```
-python scripts/start_my_day.py
-```
-
-### 高质量版（Agent 驱动，推荐）
-
-```
-Step 1 — 采集:  python scripts/collect_hotlist.py --platforms weibo,douyin,zhihu -o output/hotlist.json
-Step 2 — 分析:  python scripts/trend_analyze.py -i output/hotlist.json -o output/trends.json
-Step 3 — 充实:  Agent 对 top N 话题 WebSearch，收集真实报道/数据/引用
-                → python scripts/enrich_topics.py -o output/enriched.json
-Step 4 — 简报:  python scripts/content_brief.py -i output/enriched.json --top 8 -o output/briefs.json
-Step 5 — 输出:  python scripts/export_obsidian.py -i output/briefs.json --vault .
-                python scripts/export_excel.py -i output/briefs.json --xlsx output/report.xlsx
-                python scripts/export_mindmap.py -i output/briefs.json -o output/mindmap.html
-```
-
-**Step 3 是质量关键**：没有真实报道充实，AI 只拿到热搜标题，生成的素材必然偏泛。Agent 应对 top 话题做 WebSearch，把报道摘要/数据/URL 传给 `enrich_topics`。
-
-**Step 6（可选）— 验证**：`python scripts/verify.py -o output/verify-report.json`，对抗性检查全部工具链。
-
-**禁止**：不要自己手写分析替代 trend_analyze / content_brief。这些脚本内置了完整的 AI prompt 和结构化输出。
-
-## 社交媒体采集（web-access 协作）
-
-hot-creator **不内置浏览器引擎**。小红书/抖音/微博等需要浏览器的采集，由 **web-access skill** 负责：
-
-1. Agent 用 web-access 的 CDP 浏览目标平台，提取标题/URL/热度
-2. Agent 把提取的数据以 JSON 传给 `collect_social` 规范化
-3. `collect_social` 输出标准 Common Item Format，可直接合并进 trend_analyze
-
-```
-Agent (web-access CDP) → 提取 JSON → collect_social → 标准化 items
-```
-
-> `collect_social` 和 `monitor_competitor` 是**纯数据规范化器**，不做任何网络请求。
-> **反幻觉**：没有数据就输出空结果，绝不编造。
-
-## 模型分层与读写分离
-
-不同阶段对智能和权限的需求不同。详见 `reference/orchestration.md`。
-
-| 阶段 | 模型层级 | 权限 | 说明 |
-|------|---------|------|------|
-| 采集/探索 | fast (Haiku级) | 只读+网络 | 机械执行 |
-| 趋势分析 | default (Sonnet级) | 只读+AI | 中等推理 |
-| 内容简报 | default (Sonnet级) | 只读+AI | 核心创作 |
-| **验证** | **strong (Opus级)** | **只读** | **对抗性思维，最需要智能** |
-| 导出 | fast | 写入 | 格式转换 |
-
-> **verify.py 是纯只读的**：只执行命令捕获输出，不修改任何文件。每个 PASS 必须有执行证据。
-
-## 渐进式知识加载（Progressive Disclosure）
-
-**不要预加载所有 reference。** 按当前任务阶段，只读取需要的层级。
-
-```
-Level 1: 本文件 SKILL.md                (~1500 tokens) — 触发时自动加载
-Level 2: reference/*.md                 (按需加载)      — 执行具体任务阶段时
-Level 3: SOP/*.md + prompt-templates.md (深入时)        — 用户要求最佳实践/模板时
-```
-
-| Level 2 文件 | ~tokens | 何时加载 |
-|-------------|---------|---------|
-| `reference/orchestration.md` | ~1600 | 编排多工具流水线时 |
-| `reference/data-contracts.md` | ~2500 | 确认工具 I/O 格式时 |
-| `reference/context-budget.md` | ~1100 | 优化上下文/处理大数据集时 |
-| `reference/workflow-patterns.md` | ~1500 | 需要完整 CLI 命令示例时 |
-| `reference/platforms.md` | ~800 | 用户问支持哪些平台时 |
-
-| Level 3 文件 | 何时加载 |
-|-------------|---------|
-| `reference/prompt-templates.md` (分段) | Agent 原生模式执行 AI 分析时（只读对应 section） |
-| `SOP/每日选题工作流.md` | 用户问 SOP/最佳实践时 |
-| `SOP/话题深度分析.md` | 深入分析单个话题时 |
-| `SOP/平台策略指南.md` | 用户问平台策略时 |
-
-## 上下文预算（必须遵守）
-
-| 规则 | 执行方式 |
-|------|---------|
-| 采集数据不进主上下文 | 用 Task 子智能体运行 collect_*，只取回 `{file, count, errors}` |
-| 中间 JSON 写磁盘 | `--output file.json` 落盘，不在对话中传递大 JSON |
-| AI 分析用摘要 | trend_analyze 输入前只保留 title/platform/rank |
-| --top N 控制量 | content_brief `--top` 默认全量，`config.yaml` 的 `analyze.top_n` (默认 8) 自动限制 |
-| 话题充实选择性做 | enrich_topics 只对 top N 话题做 WebSearch，不是全部 |
-| 输出文件路径传递 | 子智能体只返回文件路径，主 Agent 告知用户位置 |
-| reference 不预加载 | 参见上方 Progressive Disclosure |
-
-## 权限边界
-
-| 权限层级 | 工具 | 条件 |
-|----------|------|------|
-| **无需授权** | knowledge_base (查询/统计), export_excel, export_obsidian, export_mindmap, collect_social, monitor_competitor, enrich_topics, verify | 纯本地文件操作 |
-| **网络访问** | collect_hotlist, collect_rss | 公共 API，无认证 |
-| **AI API 密钥** | trend_analyze, content_brief, product_profile, industry_insight | CLI 模式需 `AI_API_KEY`；Agent 原生模式不需要 |
-| **web-access skill** | 社媒浏览/竞品监控 | 需要 web-access skill + Chrome 远程调试 |
-| **文件写入** | knowledge_base (--append), 所有 export_*, start_my_day | 写入 `output/` 目录和 Obsidian vault |
-
-**降级策略**：web-access 不可用 → 跳过社媒采集，只用 API 热榜；AI API 不可用 → Agent 原生分析；网络受限 → 单平台尝试。
-
-## 七种架构模式
-
-根据用户意图选择（详见 `reference/orchestration.md`）：
-
-| 模式 | 适用场景 | 通信 |
-|------|---------|------|
-| **Pipeline** | 顺序链（collect → analyze → enrich → brief → export） | 上一步输出 → 下一步输入 |
-| **Fan-out/Fan-in** | 并行采集（多平台 collect_*） | 分发后聚合 |
-| **Expert Pool** | 产品/行业/竞品分析 | 按任务选专家工具 |
-| **Producer-Reviewer** | Brief 质量检查 | content_brief → Agent 审核 → 迭代 |
-| **Hierarchical** | 完整情报全流程 | 树状层级委派 |
-| **Orchestrator** | 一键 start_my_day | 编排器统一调度 |
-| **Adversarial Verification** | Pipeline 后质量保障 | verify.py 对抗性检查 |
-
-## 配置
-
-`config.yaml`（从 `config.example.yaml` 复制）：
-
-| 配置项 | 默认 | 说明 |
-|--------|------|------|
-| `vault_path` | `./HotCreator` | Obsidian 笔记库路径 |
-| `collect.hotlist_platforms` | weibo/douyin/zhihu/baidu | 热榜采集平台 |
-| `analyze.top_n` | 8 | content_brief 处理话题数上限 |
-| `analyze.batch_size` | 2 | content_brief 每批处理数 |
-| `graph.rolling_days` | 7 | 图谱滚动窗口天数 |
-| `product.default_profile` | (空) | 预设产品画像路径 |
-
-环境变量（仅 CLI）：`AI_API_KEY`、`AI_MODEL`（默认 deepseek/deepseek-chat）
-
-## 依赖
-
-```
-pip install requests feedparser litellm openpyxl pytz pyyaml
-```
+- 采集类脚本用 Task 子智能体执行，只取回文件路径
+- 中间 JSON 写 `output/`，传路径不传内容
+- Agent 自己做 Step 2 和 Step 3 的 AI 分析，不需要调用 trend_analyze.py 和 content_brief.py
+- **Step 4 的 3 个 export 脚本必须全部执行，不能跳过**
+- 分析趋势时注意 `platform_updated_at` 和 `source_type` 字段判断时效性

@@ -131,21 +131,52 @@ if _env_file.exists():
                 os.environ[key] = value
 
 # --- Platform registry ---
+# type: "hotlist" = 热门榜单（积累热度）, "realtime" = 实时新闻流（刚发生的）, "social" = 社媒（需 web-access）
+# column: 便于按领域筛选
 
 PLATFORMS = {
-    "weibo":              {"name": "微博",       "type": "hotlist"},
-    "douyin":             {"name": "抖音",       "type": "hotlist"},
-    "zhihu":              {"name": "知乎",       "type": "hotlist"},
-    "baidu":              {"name": "百度",       "type": "hotlist"},
-    "toutiao":            {"name": "头条",       "type": "hotlist"},
-    "bilibili-hot-search":{"name": "B站",       "type": "hotlist"},
-    "36kr":               {"name": "36氪",      "type": "hotlist"},
-    "ithome":             {"name": "IT之家",    "type": "hotlist"},
-    "thepaper":           {"name": "澎湃新闻",  "type": "hotlist"},
-    "cls-telegraph":      {"name": "财联社电报", "type": "hotlist"},
-    "xiaohongshu":        {"name": "小红书",     "type": "social"},
-    "douyin_realtime":    {"name": "抖音实时",   "type": "social"},
-    "weibo_rising":       {"name": "微博上升",   "type": "social"},
+    # ── 热门榜单 (hotlist) ──
+    "weibo":               {"name": "微博",         "type": "hotlist",  "column": "china"},
+    "douyin":              {"name": "抖音",         "type": "hotlist",  "column": "china"},
+    "zhihu":               {"name": "知乎",         "type": "hotlist",  "column": "china"},
+    "baidu":               {"name": "百度热搜",     "type": "hotlist",  "column": "china"},
+    "toutiao":             {"name": "今日头条",     "type": "hotlist",  "column": "china"},
+    "bilibili-hot-search": {"name": "B站",         "type": "hotlist",  "column": "china"},
+    "thepaper":            {"name": "澎湃新闻",    "type": "hotlist",  "column": "china"},
+    "hupu":                {"name": "虎扑",         "type": "hotlist",  "column": "china"},
+    "tieba":               {"name": "百度贴吧",     "type": "hotlist",  "column": "china"},
+    "coolapk":             {"name": "酷安",         "type": "hotlist",  "column": "tech"},
+    "douban":              {"name": "豆瓣",         "type": "hotlist",  "column": "china"},
+    "ifeng":               {"name": "凤凰网",       "type": "hotlist",  "column": "china"},
+    "nowcoder":            {"name": "牛客",         "type": "hotlist",  "column": "china"},
+    "tencent-hot":         {"name": "腾讯新闻",     "type": "hotlist",  "column": "china"},
+    "freebuf":             {"name": "Freebuf",      "type": "hotlist",  "column": "tech"},
+    "qqvideo-tv-hotsearch":{"name": "腾讯视频",     "type": "hotlist",  "column": "china"},
+    "iqiyi-hot-ranklist":  {"name": "爱奇艺",       "type": "hotlist",  "column": "china"},
+    "chongbuluo-hot":      {"name": "虫部落",       "type": "hotlist",  "column": "china"},
+    "36kr-renqi":          {"name": "36氪人气榜",   "type": "hotlist",  "column": "tech"},
+    "wallstreetcn-hot":    {"name": "华尔街见闻",   "type": "hotlist",  "column": "finance"},
+    "cls-hot":             {"name": "财联社热门",   "type": "hotlist",  "column": "finance"},
+    "xueqiu-hotstock":     {"name": "雪球",         "type": "hotlist",  "column": "finance"},
+    "hackernews":          {"name": "Hacker News",  "type": "hotlist",  "column": "tech"},
+    "producthunt":         {"name": "Product Hunt", "type": "hotlist",  "column": "tech"},
+    "github-trending-today":{"name": "GitHub",      "type": "hotlist",  "column": "tech"},
+    "sspai":               {"name": "少数派",       "type": "hotlist",  "column": "tech"},
+    "juejin":              {"name": "稀土掘金",     "type": "hotlist",  "column": "tech"},
+    "steam":               {"name": "Steam",        "type": "hotlist",  "column": "world"},
+    # ── 实时新闻流 (realtime) ──
+    "zaobao":              {"name": "联合早报",     "type": "realtime", "column": "world"},
+    "wallstreetcn-quick":  {"name": "华尔街见闻快讯","type": "realtime", "column": "finance"},
+    "36kr-quick":          {"name": "36氪快讯",     "type": "realtime", "column": "tech"},
+    "cls-telegraph":       {"name": "财联社电报",   "type": "realtime", "column": "finance"},
+    "ithome":              {"name": "IT之家",       "type": "realtime", "column": "tech"},
+    "gelonghui":           {"name": "格隆汇",       "type": "realtime", "column": "finance"},
+    "jin10":               {"name": "金十数据",     "type": "realtime", "column": "finance"},
+    "fastbull-express":    {"name": "法布财经快讯", "type": "realtime", "column": "finance"},
+    # ── 社媒（需 web-access skill）──
+    "xiaohongshu":         {"name": "小红书",       "type": "social",   "column": "china"},
+    "douyin_realtime":     {"name": "抖音实时",     "type": "social",   "column": "china"},
+    "weibo_rising":        {"name": "微博上升",     "type": "social",   "column": "china"},
 }
 
 NEWSNOW_API = "https://newsnow.busiyi.world/api/s"
