@@ -45,9 +45,20 @@ AI_MODEL=deepseek/deepseek-chat  # 可选：默认 deepseek
 
 用户意图涉及：热点、趋势、选题、内容创作、热搜、爆款、创作灵感、竞品分析、行业洞察、产品推广、蹭热点
 
+**首次交互必须确认模式**：当用户意图不明确时，Agent 应先询问用户选择哪种模式：
+
+| 模式 | 适用场景 | 需要什么 |
+|------|---------|---------|
+| **热点模式** | 纯热点趋势 + 创作简报 | 无需额外信息 |
+| **产品模式** | 产品 × 热点内容策划 | 需要产品描述或已有画像 |
+| **快速模式** | 只看热点排行，不生成简报 | 无需额外信息 |
+
+> CLI 用户：直接跑 `python scripts/start_my_day.py`，脚本会交互式询问。
+> Agent 用户：Agent 应在对话中主动询问模式，然后传对应参数。
+
 | 触发词 | 架构模式 | 入口 |
 |--------|---------|------|
-| "开始今日选题" / "start my day" | Pipeline (Orchestrator) | `start_my_day` |
+| "开始今日选题" / "start my day" | 交互选择 → Pipeline | `start_my_day`（交互式） |
 | "看看什么热点" | Fan-out → Pipeline | `collect_* → trend_analyze` |
 | "帮我做内容选题" | Fan-out → Enrich → Pipeline | `collect_* → trend_analyze → enrich_topics → content_brief → export` |
 | "搜索我的产品并结合热点" | Search → Pipeline | WebSearch → `product_profile → collect_* → content_brief(--profile)` |

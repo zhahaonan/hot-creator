@@ -23,13 +23,23 @@ alwaysApply: true
 - `python scripts/*.py` — 所有工具脚本
 - `pip install -r requirements.txt` — 安装依赖
 
+## 首次交互：必须先问模式
+
+当用户说"帮我做选题""开始今日选题"等，**先询问用户选择模式**，不要直接开始执行：
+
+- **热点模式** — 纯热点趋势分析 + 创作简报（不需要产品信息）
+- **产品模式** — 结合产品做热点内容策划（需要产品描述或已有画像）
+- **快速模式** — 只看热点排行，不生成详细简报
+
+用户明确说了"我的产品XXX结合热点"则直接进产品模式，无需再问。
+
 ## 标准工作流
 
 ```
 collect_hotlist → trend_analyze → enrich_topics → content_brief → export_*
 ```
 
-或一键基础版：`python scripts/start_my_day.py`
+或一键交互版：`python scripts/start_my_day.py`（脚本会自动询问模式）
 
 **质量关键**：`enrich_topics` 步骤用 WebSearch 获取真实报道充实话题，大幅提升 brief 质量。
 
