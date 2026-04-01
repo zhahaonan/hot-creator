@@ -16,7 +16,8 @@ pip install -r requirements.txt
 ```
 
 > 有 `uv` 的话更快：`uv pip install -r requirements.txt`
-> **不需要配置 AI API Key** — Agent 自己就是 AI。
+> **Skill 模式不需要配置 AI API Key** — Agent 自己就是 AI。  
+> **独立 CLI** 若跑 `product_profile` / `trend_analyze` / `content_brief` 等需 `AI_API_KEY`；`--product-file` 走 `product_profile` 解析 PDF 同样需要。
 
 装好后对 Agent 说：
 
@@ -34,6 +35,12 @@ python scripts/start_my_day.py
 
 # 或指定产品直接跑
 python scripts/start_my_day.py --no-interactive --product-text "我们是一个AI写作助手..."
+
+# 或上传/指定本地产品介绍 PDF（需 AI_API_KEY，会先解析再生成画像）
+python scripts/start_my_day.py --no-interactive --product-file ./docs/product-intro.pdf
+
+# 仅抽取 PDF/文档为纯文本（不需 API，适合先给 Agent 读）
+python scripts/product_profile.py --file ./docs/product-intro.pdf --extract-only -o output/product-raw.txt
 
 # 逐步执行
 python scripts/collect_hotlist.py --platforms weibo,douyin,zhihu -o output/hotlist.json

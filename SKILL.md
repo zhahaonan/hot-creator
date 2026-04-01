@@ -1,6 +1,6 @@
 ---
 name: hot-creator
-version: "4.3.0"
+version: "4.3.1"
 description: 产品 x 热点内容策划工具链 — 采集全网热点，结合你的产品生成完整创作方案
 user-invocable: true
 metadata: {"openclaw": {"emoji": "🔥", "homepage": "https://github.com/zhahaonan/hot-creator", "requires": {"anyBins": ["python3", "python"]}, "install": [{"id": "pip", "kind": "node", "label": "Install deps", "bins": ["python"]}]}}
@@ -26,6 +26,9 @@ pip install -r requirements.txt
 
 **触发后必须获取产品/品牌信息**：
 - 用户消息中已包含产品名/描述 → 直接使用
+- 用户提供了 **PDF/文档路径**（或上传文件后给出路径）→  
+  - **无 API Key（Skill）**：先 `python {baseDir}/scripts/product_profile.py --file <路径> --extract-only -o output/product-raw.txt` 抽出正文，Agent 再基于正文生成画像 JSON；或让用户粘贴 PDF 里的文字  
+  - **有 API Key（CLI）**：`product_profile.py --file <路径> -o output/profile.json`，或 `start_my_day.py --product-file <路径>` 一键全流程
 - 都没有 → 追问："你的产品/品牌是什么？一句话描述即可"
 
 ## 强制执行流程（每一步都必须做）

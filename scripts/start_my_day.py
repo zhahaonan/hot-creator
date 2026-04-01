@@ -26,6 +26,7 @@ SCHEMA = {
         "properties": {
             "profile": {"type": "string", "description": "Path to product profile JSON (enables product x trend mode)"},
             "product_text": {"type": "string", "description": "Raw product description text (auto-generates profile)"},
+            "product_file": {"type": "string", "description": "Path to product PDF/MD/TXT (auto-generates profile)"},
         },
     },
     "output": {
@@ -39,6 +40,7 @@ SCHEMA = {
         "cli_full": "python scripts/start_my_day.py",
         "cli_product": "python scripts/start_my_day.py --profile profile.json",
         "cli_product_text": "python scripts/start_my_day.py --product-text '我们是一个AI写作助手...'",
+        "cli_product_pdf": "python scripts/start_my_day.py --product-file ./docs/product-intro.pdf",
         "cli_skip": "python scripts/start_my_day.py --skip-collect -i output/briefs.json",
         "cli_graph": "python scripts/start_my_day.py --days 7",
     },
@@ -141,7 +143,7 @@ def interactive_setup(config: dict) -> dict:
     """Ask for product info if not already provided."""
     product_cfg = config.get("product", {})
     default_profile = product_cfg.get("default_profile", "")
-    result = {"profile_path": "", "product_text": ""}
+    result = {"profile_path": "", "product_text": "", "product_file": ""}
 
     print("\n" + "=" * 50, file=sys.stderr)
     print("  HotCreator — 产品 x 热点内容策划", file=sys.stderr)
@@ -160,8 +162,8 @@ def interactive_setup(config: dict) -> dict:
             result["profile_path"] = default_profile
             return result
 
-    print("\n请输入你的产品/品牌描述（一段话即可，回车结束）:", file=sys.stderr)
-    print("例如：我们是一个AI写作助手，帮助内容创作者快速生成文案...\n", file=sys.stderr)
+    print("\n请输入产品/品牌描述，或直接粘贴 **PDF / MD / TXT 文件路径**（回车结束）:", file=sys.stderr)
+    print("例如：我们是一个AI写作助手…  或  C:\\docs\\产品介绍.pdf\n", file=sys.stderr)
     try:
         text = input("> ").strip()
     except (EOFError, KeyboardInterrupt):
@@ -169,7 +171,13 @@ def interactive_setup(config: dict) -> dict:
         sys.exit(0)
 
     if text:
-        result["product_text"] = text
+        maybe = Path(text)
+        if maybe.is_file() and maybe.suffix.lower() in (
+            ".pdf", ".md", ".markdown", ".txt", ".docx",
+        ):
+            result["product_file"] = str(maybe.resolve())
+        else:
+            result["product_text"] = text
     else:
         print("\n⚠️ 未输入产品信息，将只生成趋势排行\n", file=sys.stderr)
 
@@ -192,6 +200,8 @@ def main():
                         help="Path to product profile JSON (enables product x trend mode)")
     parser.add_argument("--product-text", type=str, default=None,
                         help="Raw product description text (auto-generates profile via product_profile)")
+    parser.add_argument("--product-file", type=str, default=None,
+                        help="Path to product intro PDF/MD/TXT (auto-generates profile via product_profile)")
     parser.add_argument("--no-export", action="store_true",
                         help="Skip exports, only collect+analyze+brief+KB")
     parser.add_argument("--no-update-check", action="store_true",
@@ -209,12 +219,14 @@ def main():
     warn_if_newer_upstream()
 
     # Interactive: ask for product info if none provided and stdin is a terminal
-    has_product = (args.profile or getattr(args, "product_text", None))
+    has_product = (args.profile or getattr(args, "product_text", None) or getattr(args, "product_file", None))
     has_skip = (args.skip_collect or args.skip_analyze or (hasattr(args, "input") and args.input))
     if not has_product and not has_skip and not args.no_interactive and sys.stdin.isatty():
         setup = interactive_setup(config)
         if setup["profile_path"]:
             args.profile = setup["profile_path"]
+        if setup.get("product_file"):
+            args.product_file = setup["product_file"]
         if setup["product_text"]:
             args.product_text = setup["product_text"]
 
@@ -233,13 +245,28 @@ def main():
 
     profile_path = args.profile or product_cfg.get("default_profile", "")
     product_text = getattr(args, "product_text", None)
+    product_file = getattr(args, "product_file", None)
 
     log("main", f"=== HotCreator Start My Day · {date} ===")
-    mode_label = "product x trend" if (profile_path or product_text) else "generic"
+    mode_label = "product x trend" if (profile_path or product_text or product_file) else "generic"
     log("main", f"Vault: {vault_path} | Platforms: {platforms} | Graph days: {rolling_days} | Mode: {mode_label}")
 
     # ========== STEP 0: Product Profile (if requested) ==========
-    if product_text and not profile_path:
+    # Priority: existing --profile > --product-file > --product-text
+    if not profile_path and product_file:
+        profile_path = str(OUTPUT_DIR / f"{date}-profile.json")
+        ok, out = run_script(
+            "product_profile.py",
+            ["--file", product_file, "-o", profile_path],
+            "product_profile",
+        )
+        steps.append({"step": "product_profile", "status": "ok" if ok else "error"})
+        if not ok:
+            log("main", "product_profile (--file) failed, falling back to generic mode", "WARN")
+            profile_path = ""
+        else:
+            outputs["profile"] = profile_path
+    elif product_text and not profile_path:
         profile_path = str(OUTPUT_DIR / f"{date}-profile.json")
         ok, out = run_script("product_profile.py",
                              ["--text", product_text, "-o", profile_path], "product_profile")

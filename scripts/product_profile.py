@@ -62,12 +62,13 @@ SCHEMA = {
     "examples": {
         "cli_text": "python scripts/product_profile.py --text '我们是一个AI写作助手...' -o profile.json",
         "cli_file": "python scripts/product_profile.py --file product.pdf --competitors '竞品A,竞品B' -o profile.json",
+        "extract_only": "python scripts/product_profile.py --file intro.pdf --extract-only -o output/product-raw.txt",
         "agent_native": "Agent extracts profile fields from user's product description in dialogue"
     },
     "errors": {
         "no_input": "未提供产品信息 → 用 --text 或 --file",
         "file_not_found": "文件不存在 → 检查路径",
-        "pdf_parse_failed": "PDF 解析失败 → 需安装 PyMuPDF 或 PyPDF2"
+        "pdf_parse_failed": "PDF 解析失败 → pip install pypdf"
     }
 }
 
@@ -106,6 +107,33 @@ PROFILE_PROMPT_USER = """请从以下产品资料中提取结构化的产品画�
 - content_goals 根据产品阶段和类型推断合理的内容营销目标"""
 
 
+def _pdf_to_text(p: Path) -> str:
+    """Extract text from PDF: pypdf first, then PyMuPDF (fitz) if installed."""
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(str(p))
+        parts = []
+        for page in reader.pages:
+            parts.append(page.extract_text() or "")
+        return "\n".join(parts)
+    except ImportError:
+        pass
+    except Exception:
+        pass
+    try:
+        import fitz  # PyMuPDF
+        doc = fitz.open(str(p))
+        try:
+            return "\n".join(page.get_text() for page in doc)
+        finally:
+            doc.close()
+    except ImportError:
+        pass
+    except Exception:
+        pass
+    return ""
+
+
 def read_product_file(file_path: str) -> str:
     """Read product document from file."""
     p = Path(file_path)
@@ -118,54 +146,24 @@ def read_product_file(file_path: str) -> str:
         return p.read_text(encoding="utf-8")
 
     if suffix == ".pdf":
-        try:
-            import subprocess
-            result = subprocess.run(
-                ["python", "-c", f"""
-import sys
-try:
-    import fitz
-    doc = fitz.open("{file_path}")
-    text = ""
-    for page in doc:
-        text += page.get_text()
-    print(text)
-except ImportError:
-    try:
-        from PyPDF2 import PdfReader
-        reader = PdfReader("{file_path}")
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text() or ""
-        print(text)
-    except ImportError:
-        print("PDF_PARSE_ERROR", file=sys.stderr)
-        sys.exit(1)
-"""],
-                capture_output=True, text=True, timeout=30
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                return result.stdout.strip()
-        except Exception:
-            pass
-        return p.read_text(encoding="utf-8", errors="ignore")
+        text = _pdf_to_text(p)
+        text = text.strip()
+        if text:
+            return text
+        fail(
+            "PDF 未解析出文本。若为扫描件/图片版 PDF，请先 OCR 或改用文字说明；"
+            "并确认已安装: pip install pypdf"
+        )
 
-    if suffix in (".docx",):
+    if suffix == ".docx":
         try:
-            import subprocess
-            result = subprocess.run(
-                ["python", "-c", f"""
-from docx import Document
-doc = Document("{file_path}")
-text = "\\n".join(p.text for p in doc.paragraphs)
-print(text)
-"""],
-                capture_output=True, text=True, timeout=30
-            )
-            if result.returncode == 0:
-                return result.stdout.strip()
-        except Exception:
-            pass
+            from docx import Document
+            doc = Document(str(p))
+            return "\n".join(par.text for par in doc.paragraphs if par.text.strip())
+        except ImportError:
+            fail("读取 .docx 需要: pip install python-docx")
+        except Exception as e:
+            fail(f"DOCX 解析失败: {e}")
 
     return p.read_text(encoding="utf-8", errors="ignore")
 
@@ -206,6 +204,11 @@ def main():
     parser = base_argparser("Parse product info into structured profile")
     parser.add_argument("--file", "-f", help="Path to product document (PDF/MD/TXT/DOCX)")
     parser.add_argument("--text", "-t", help="Product description text")
+    parser.add_argument(
+        "--extract-only",
+        action="store_true",
+        help="Only extract text from --file (no AI). For Skill/Agent mode without API key.",
+    )
     parser.add_argument("--competitors", help="Comma-separated competitor names")
     parser.add_argument("--model", help="AI model (default: env AI_MODEL)")
     parser.add_argument("--api-key", help="AI API key (default: env AI_API_KEY)")
@@ -213,12 +216,27 @@ def main():
     args = parser.parse_args()
     handle_schema(args, SCHEMA)
 
+    if args.extract_only:
+        if not args.file:
+            fail("--extract-only requires --file")
+        print(f"[product_profile] Extracting text only: {args.file}", file=sys.stderr)
+        product_text = read_product_file(args.file)
+        if len(product_text) > 100000:
+            product_text = product_text[:100000] + "\n\n[...truncated...]"
+        if args.output:
+            Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.output).write_text(product_text, encoding="utf-8")
+            print(f"[product_profile] Wrote: {args.output}", file=sys.stderr)
+        else:
+            print(product_text)
+        return
+
     model = args.model or os.environ.get("AI_MODEL", "deepseek/deepseek-chat")
     api_key = args.api_key or os.environ.get("AI_API_KEY", "")
     api_base = args.api_base or os.environ.get("AI_API_BASE", "")
 
     if not api_key:
-        fail("AI_API_KEY not set. Export it or pass --api-key.")
+        fail("AI_API_KEY not set. Export it or pass --api-key. (Skill mode: use --extract-only to read PDF without AI.)")
 
     product_text = ""
 
