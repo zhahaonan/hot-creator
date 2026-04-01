@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Post-install hook for OpenClaw / AgentSkills
-# Auto-runs after: openclaw skills add https://github.com/zhahaonan/hot-creator
 set -e
 cd "$(dirname "$0")"
 
@@ -13,4 +12,4 @@ elif command -v pip &>/dev/null; then
 fi
 
 [ ! -f config.yaml ] && cp config.example.yaml config.yaml 2>/dev/null || true
-echo "[hot-creator] Installed — core deps only (~5 MB). Ready as Skill."
+echo "[hot-creator] Installed. Set AI_API_KEY env var, then read SKILL.md."

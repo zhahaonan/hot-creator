@@ -57,32 +57,27 @@
 openclaw skills add https://github.com/zhahaonan/hot-creator
 ```
 
-**Cursor / Claude Code / Cline / Windsurf：**
+**Cursor / Claude Code / Cline / Windsurf / 其他 Agent 工具：**
 ```bash
 git clone https://github.com/zhahaonan/hot-creator.git
 cd hot-creator
-pip install -r requirements.txt   # 仅 5 个轻量包，~5 MB
+pip install -r requirements.txt
+cp .env.example .env   # 填入你的 AI API Key
 ```
 
-> 有 `uv` 的话更快：`uv pip install -r requirements.txt`（秒装）
+> 有 `uv` 的话更快：`uv pip install -r requirements.txt`
 
-装好后直接对 Agent 说：
+装好后对 Agent 说：
 
 ```
 "帮我看看现在什么热点最火，生成一份内容创作简报"
 ```
 
-Agent 自动读取 `SKILL.md`，按编排策略执行采集→分析→输出。**不需要 AI API Key**。
+Agent 自动读取 `SKILL.md`，严格按内置工作流执行：采集 → AI 分析 → 创作简报 → 多格式输出。
 
-### Standalone CLI（完整独立模式）
-
-需要额外安装 `litellm`（~200 MB），用于脱离 Agent 独立运行 AI 分析：
+### Standalone CLI（独立命令行）
 
 ```bash
-pip install -r requirements-cli.txt  # 包含 litellm + 全部依赖
-
-cp .env.example .env                 # 填入你的 AI API Key
-
 # 一键全流程
 python scripts/start_my_day.py
 
@@ -92,13 +87,6 @@ python scripts/trend_analyze.py -i output/hotlist.json -o output/trends.json
 python scripts/content_brief.py -i output/trends.json --top 10 -o output/briefs.json
 python scripts/export_excel.py -i output/briefs.json --xlsx output/report.xlsx
 ```
-
-### 安装对比
-
-| 模式 | 命令 | 大小 | 耗时 | 需要 API Key |
-|------|------|------|------|-------------|
-| **Skill 模式** | `pip install -r requirements.txt` | ~5 MB | ~3s | 不需要 |
-| CLI 模式 | `pip install -r requirements-cli.txt` | ~200 MB | ~60s | 需要 |
 
 ## Tools / 工具
 

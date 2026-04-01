@@ -1,4 +1,0 @@
-# Extra dependencies for CLI standalone mode (AI analysis without Agent)
-# Only needed when running scripts directly with AI_API_KEY
--r requirements.txt
-litellm>=1.0.0

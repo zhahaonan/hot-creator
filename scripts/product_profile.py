@@ -19,7 +19,7 @@ from _common import (
 try:
     import litellm
 except ImportError:
-    fail("litellm not installed (CLI mode only). Run: pip install -r requirements-cli.txt")
+    fail("litellm not installed. Run: pip install -r requirements.txt")
 
 SCHEMA = {
     "name": "product_profile",
